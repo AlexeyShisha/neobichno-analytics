@@ -13,6 +13,10 @@
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:25px 0 80px}.card{background:#ffffff08;border:1px solid var(--line);border-radius:18px;padding:24px}.card h2{margin-top:0;font-size:19px}.card p{color:var(--muted);font-size:15px}.section{padding:55px 0;border-top:1px solid var(--line)}.section h2{font-size:32px}.section p{color:var(--muted);max-width:800px}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.step strong{display:block;margin-bottom:8px}.num{color:#ff5876;font-size:13px;font-weight:800}.footer{border-top:1px solid var(--line);padding:28px 0 40px;color:var(--muted);font-size:13px}.footer a{color:var(--muted);margin-right:20px}
 @media(max-width:720px){.grid,.steps{grid-template-columns:1fr}.hero{padding-top:45px}.nav a{margin-left:10px}}
 </style>
+
+<style>
+.dashboard{display:none;padding:40px 0 80px}.dashboard.active{display:block}.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.metric{background:#ffffff08;border:1px solid var(--line);border-radius:16px;padding:20px}.metric small{color:var(--muted)}.metric strong{display:block;font-size:30px;margin-top:5px}.video-row{padding:16px 0;border-top:1px solid var(--line)}.video-row:first-child{border-top:0}.pills span{display:inline-block;background:#ffffff10;border-radius:999px;padding:5px 9px;margin:6px 6px 0 0;font-size:12px}.status{color:#6ee7a8;font-weight:700}.error{color:#ff7188}@media(max-width:720px){.dash-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
 </head>
 <body>
 <header class="container nav">
@@ -42,10 +46,52 @@
 <section id="privacy" class="container section">
 <h2>Privacy & terms</h2>
 <p>Neobichno Analytics only requests the TikTok data required for its analytics features after the user grants permission. It does not publish, modify or delete TikTok content.</p>
-<p><a class="button" href="https://sbieydlttplfkwjobzts.supabase.co/functions/v1/neobichno-site/privacy">Privacy Policy</a>
-<a class="button" style="margin-left:10px;background:#222233" href="https://sbieydlttplfkwjobzts.supabase.co/functions/v1/neobichno-site/terms">Terms of Service</a></p>
+<p><a class="button" href="privacy.html">Privacy Policy</a>
+<a class="button" style="margin-left:10px;background:#222233" href="terms.html">Terms of Service</a></p>
+</section>
+
+<section id="dashboard" class="container dashboard">
+  <div class="eyebrow">TikTok connected</div>
+  <h1 style="font-size:clamp(38px,6vw,64px)">Your analytics.</h1>
+  <p id="dashStatus" class="status">Loading synchronized TikTok data…</p>
+  <div id="dashMetrics" class="dash-grid" style="margin-top:28px"></div>
+  <div class="section" style="margin-top:40px">
+    <h2>Recent videos</h2>
+    <div id="dashVideos"></div>
+  </div>
 </section>
 </main>
 <footer class="container footer">© 2026 Neobichno Analytics · <a href="https://sbieydlttplfkwjobzts.supabase.co/functions/v1/neobichno-site/privacy">Privacy Policy</a> <a href="https://sbieydlttplfkwjobzts.supabase.co/functions/v1/neobichno-site/terms">Terms of Service</a></footer>
+
+<script>
+(async function(){
+  const params=new URLSearchParams(location.search);
+  const session=params.get("session");
+  if(!session) return;
+  document.querySelector(".hero").style.display="none";
+  document.querySelector("#features").style.display="none";
+  document.querySelector("#how").style.display="none";
+  document.querySelector("#privacy").style.display="none";
+  const dash=document.querySelector("#dashboard"); dash.classList.add("active");
+  try{
+    const r=await fetch("https://sbieydlttplfkwjobzts.supabase.co/functions/v1/tiktok-dashboard?session="+encodeURIComponent(session));
+    const data=await r.json();
+    if(!r.ok) throw new Error(data.error||"Unable to load analytics");
+    const a=data.account||{};
+    const n=v=>v==null?"—":Number(v).toLocaleString();
+    document.querySelector("#dashStatus").textContent="TikTok connected · data synchronized";
+    document.querySelector("#dashMetrics").innerHTML=[
+      ["Followers",a.follower_count],["Following",a.following_count],["Likes",a.likes_count],["Videos",a.video_count]
+    ].map(x=>'<div class="metric"><small>'+x[0]+'</small><strong>'+n(x[1])+'</strong></div>').join("");
+    document.querySelector("#dashVideos").innerHTML=(data.videos||[]).map(v=>{
+      const title=(v.title||v.video_description||"TikTok video").replace(/[<>&"]/g,"");
+      return '<div class="video-row"><strong>'+title+'</strong><div class="pills"><span>👁 '+n(v.view_count)+'</span><span>❤️ '+n(v.like_count)+'</span><span>💬 '+n(v.comment_count)+'</span><span>↗️ '+n(v.share_count)+'</span>'+(v.share_url?' <a href="'+v.share_url+'" target="_blank" rel="noopener">Open</a>':'')+'</div></div>';
+    }).join("")||"<p>No public videos were returned.</p>";
+  }catch(e){
+    document.querySelector("#dashStatus").className="error";
+    document.querySelector("#dashStatus").textContent=e.message;
+  }
+})();
+</script>
 </body>
 </html>
